@@ -6,7 +6,7 @@ function Header() {
   return (
     <div>
         <Router>
-            <Link to="/">MDP Solver</Link>
+            <Link className="text-center text-6xl text-whitish block pt-10 font-semibold" to="/">MDP Solver</Link>
             <Routes>
                 <Route path="/" exact component = {App}/>
             </Routes>
