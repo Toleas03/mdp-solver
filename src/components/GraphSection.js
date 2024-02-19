@@ -99,8 +99,16 @@ function drawStates() {
   });
 }
 
+function distanceMouseToState(x, y, state) {
+  return Math.sqrt(Math.pow(x - state.x, 2) + Math.pow(y - state.y, 2));
+}
+
+function distanceStateToState(fromState, toState) {
+  return Math.sqrt(Math.pow(fromState.x - toState.x, 2) + Math.pow(fromState.y - toState.y, 2));
+}
+
 function mouseInState(x, y, state) {
-  let distance = Math.sqrt(Math.pow(x - state.x, 2) + Math.pow(y - state.y, 2));
+  let distance = distanceMouseToState(x, y, state);
   if (distance <= state.r + state.lineWidth) {
     return true;
   } else {
@@ -111,7 +119,7 @@ function mouseInState(x, y, state) {
 function mouseDown(event) {
   event.preventDefault();
 
-  if(event.type === "mousedown") {
+  if (event.type === "mousedown") {
     startX = parseInt(event.clientX - offsetX);
     startY = parseInt(event.clientY - offsetY);
   } else {
@@ -120,25 +128,47 @@ function mouseDown(event) {
   }
 
   if (tool === "add") {
-    const stateText = window.prompt("State Name:");
+    let stateText = window.prompt("State Name:");
     myStates.push(new State(startX, startY, stateText));
     drawStates();
   } else {
+    let minDistance;
+    if (myStates.length > 0) {
+      minDistance = distanceMouseToState(startX, startY, myStates[0]);
+      clickedStateIndex = 0;
+    }
     for (let i = 0; i < myStates.length; i++) {
       if (mouseInState(startX, startY, myStates[i])) {
-        clickedStateIndex = i;
+        let currentDistance = distanceMouseToState(startX, startY, myStates[i]);
+        if (currentDistance < minDistance) {
+          clickedStateIndex = i;
+          minDistance = currentDistance;
+        }
         isDragging = true;
-        break;
       }
     }
-    if(tool === "sub" && clickedStateIndex != null) {
-      const confirm = window.prompt("Are you sure? (y/n)");
-      if(confirm.toLowerCase() === "y") {
-        myStates.splice(clickedStateIndex, 1);
-        drawStates();
+
+    if (myStates.length > 1) {
+      swapStates();
+    }
+
+    if (tool === "sub" && clickedStateIndex != null) {
+      let index = myStates.length - 1;
+      let confirm = window.prompt(
+        `Are you sure you want to delete state ${myStates[index].text}? (y/n)`
+      );
+      if (typeof confirm === "string" && confirm.toLowerCase() === "y") {
+        myStates.splice(index, 1);
       }
     }
+
+    drawStates();
   }
+}
+
+function swapStates() {
+  let temp = myStates.splice(clickedStateIndex, 1);
+  myStates.push(temp[0]);
 }
 
 function mouseUpOut(event) {
@@ -153,7 +183,7 @@ function mouseMove(event) {
   if (isDragging && tool === "cursor") {
     let currentX;
     let currentY;
-    if(event.type === "mousemove") {
+    if (event.type === "mousemove") {
       currentX = parseInt(event.clientX - offsetX);
       currentY = parseInt(event.clientY - offsetY);
     } else {
@@ -161,11 +191,11 @@ function mouseMove(event) {
       currentY = parseInt(event.touches[0].clientY - offsetY);
     }
 
-    myStates[clickedStateIndex].x += currentX - startX;
-    myStates[clickedStateIndex].y += currentY - startY;
+    myStates[myStates.length - 1].x += currentX - startX;
+    myStates[myStates.length - 1].y += currentY - startY;
     drawStates();
-    
-    if(event.type === "mousemove") {
+
+    if (event.type === "mousemove") {
       startX = parseInt(event.clientX - offsetX);
       startY = parseInt(event.clientY - offsetY);
     } else {
@@ -210,6 +240,16 @@ window.onload = () => {
   canvas.ontouchend = mouseUpOut;
   canvas.ontouchcancel = mouseUpOut;
   canvas.ontouchmove = mouseMove;
+
+  /*
+  let state1 = new State(100, 100, "A");
+  let state2 = new State(300, 200, "B");
+  myStates.push(state1);
+  myStates.push(state2);
+  drawStates();
+  let con1 = new Connection(state1, state2, "Name", "5", "1");
+  con1.draw();
+  */
 };
 
 class State {
@@ -243,6 +283,62 @@ class State {
       context.font = "0.875rem Poppins";
     }
     context.fillText(this.text, this.x, this.y);
+    context.closePath();
+  }
+}
+
+class Connection {
+  constructor(fromState, toState, name, reward, prob) {
+    this.fromState = fromState;
+    this.toState = toState;
+    this.name = name;
+    this.reward = reward;
+    this.prob = prob;
+  }
+
+  draw() {
+    context.beginPath();
+
+    let fromX = this.fromState.x;
+    let toX = this.toState.x;
+    let fromY = this.fromState.y;
+    let toY = this.toState.y;
+    let gap = 32;
+
+    if(this.fromState.x < this.toState.x) {
+      fromX += gap;
+      toX -= gap;
+    } else {
+      fromX -= gap;
+      toX -= gap;
+    }
+
+    if(this.fromState.y < this.toState.y) {
+      fromY += gap;
+      toY -= gap;
+    } else {
+      fromY -= gap;
+      toY -= gap;
+    }
+
+    let headLen = 10; // length of head in pixels
+    let dx = toX - fromX;
+    let dy = toY - fromY;
+    let angle = Math.atan2(dy, dx);
+    context.moveTo(fromX, fromY);
+    context.lineTo(toX, toY);
+    context.lineTo(
+      toX - headLen * Math.cos(angle - Math.PI / 6),
+      toY - headLen * Math.sin(angle - Math.PI / 6)
+    );
+    context.moveTo(toX, toY);
+    context.lineTo(
+      toX - headLen * Math.cos(angle + Math.PI / 6),
+      toY - headLen * Math.sin(angle + Math.PI / 6)
+    );
+
+    context.strokeStyle = "#000";
+    context.stroke();
     context.closePath();
   }
 }
