@@ -47,12 +47,13 @@ function vi_calculate(input) {
           };
       }
   }
-  return {
+  return ({
       header: index,
       values: values
-  }
+  });
 }
-export default vi_calculate
+
+export default vi_calculate;
 
 /*
 const input = {
@@ -75,7 +76,7 @@ const input = {
   ]
 }
 
-const blyat = {
+const output = {
   header: [
     "State 1",
     "State 2"
