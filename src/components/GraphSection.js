@@ -135,20 +135,19 @@ function mouseDown(event) {
     let minDistance;
     if (myStates.length > 0) {
       minDistance = distanceMouseToState(startX, startY, myStates[0]);
-      clickedStateIndex = 0;
     }
     for (let i = 0; i < myStates.length; i++) {
       if (mouseInState(startX, startY, myStates[i])) {
         let currentDistance = distanceMouseToState(startX, startY, myStates[i]);
-        if (currentDistance < minDistance) {
+        if (currentDistance <= minDistance) {
           clickedStateIndex = i;
           minDistance = currentDistance;
+          isDragging = true;
         }
-        isDragging = true;
       }
     }
 
-    if (myStates.length > 1) {
+    if (myStates.length > 1 && isDragging) {
       swapStates();
     }
 
@@ -304,22 +303,6 @@ class Connection {
     let fromY = this.fromState.y;
     let toY = this.toState.y;
     let gap = 32;
-
-    if(this.fromState.x < this.toState.x) {
-      fromX += gap;
-      toX -= gap;
-    } else {
-      fromX -= gap;
-      toX -= gap;
-    }
-
-    if(this.fromState.y < this.toState.y) {
-      fromY += gap;
-      toY -= gap;
-    } else {
-      fromY -= gap;
-      toY -= gap;
-    }
 
     let headLen = 10; // length of head in pixels
     let dx = toX - fromX;
