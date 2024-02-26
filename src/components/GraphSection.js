@@ -81,6 +81,7 @@ let tool = "cursor";
 let offsetX;
 let offsetY;
 let myStates = [];
+let myConnections = [];
 let clickedStateIndex = null;
 let isDragging = false;
 let startX;
@@ -92,10 +93,14 @@ function getOffset() {
   offsetY = canvasOffsets.top;
 }
 
-function drawStates() {
+function drawStatesWithConnections() {
   context.clearRect(0, 0, canvas.width, canvas.height);
   myStates.forEach((state) => {
     state.draw();
+  });
+
+  myConnections.forEach((connection) => {
+    connection.draw();
   });
 }
 
@@ -103,9 +108,11 @@ function distanceMouseToState(x, y, state) {
   return Math.sqrt(Math.pow(x - state.x, 2) + Math.pow(y - state.y, 2));
 }
 
-function distanceStateToState(fromState, toState) {
-  return Math.sqrt(Math.pow(fromState.x - toState.x, 2) + Math.pow(fromState.y - toState.y, 2));
-}
+/*function distanceStateToState(fromState, toState) {
+  return Math.sqrt(
+    Math.pow(fromState.x - toState.x, 2) + Math.pow(fromState.y - toState.y, 2)
+  );
+}*/
 
 function mouseInState(x, y, state) {
   let distance = distanceMouseToState(x, y, state);
@@ -130,7 +137,7 @@ function mouseDown(event) {
   if (tool === "add") {
     let stateText = window.prompt("State Name:");
     myStates.push(new State(startX, startY, stateText));
-    drawStates();
+    drawStatesWithConnections();
   } else {
     let minDistance;
     if (myStates.length > 0) {
@@ -157,11 +164,16 @@ function mouseDown(event) {
         `Are you sure you want to delete state ${myStates[index].text}? (y/n)`
       );
       if (typeof confirm === "string" && confirm.toLowerCase() === "y") {
+        for(let i = 0; i < myConnections.length; i++) {
+          if(myConnections[i].fromState === myStates[index] || myConnections[i].toState === myStates[index]) {
+            myConnections.splice(i, 1);
+          }
+        }
         myStates.splice(index, 1);
       }
     }
 
-    drawStates();
+    drawStatesWithConnections();
   }
 }
 
@@ -192,7 +204,7 @@ function mouseMove(event) {
 
     myStates[myStates.length - 1].x += currentX - startX;
     myStates[myStates.length - 1].y += currentY - startY;
-    drawStates();
+    drawStatesWithConnections();
 
     if (event.type === "mousemove") {
       startX = parseInt(event.clientX - offsetX);
@@ -221,13 +233,13 @@ window.onload = () => {
     getOffset();
     canvas.width = canvasContainer.offsetWidth;
     canvas.height = canvasContainer.offsetHeight;
-    drawStates();
+    drawStatesWithConnections();
   };
   canvas.onresize = () => {
     getOffset();
     canvas.width = canvasContainer.offsetWidth;
     canvas.height = canvasContainer.offsetHeight;
-    drawStates();
+    drawStatesWithConnections();
   };
 
   canvas.onmousedown = mouseDown;
@@ -240,15 +252,13 @@ window.onload = () => {
   canvas.ontouchcancel = mouseUpOut;
   canvas.ontouchmove = mouseMove;
 
-  /*
   let state1 = new State(100, 100, "A");
   let state2 = new State(300, 200, "B");
   myStates.push(state1);
   myStates.push(state2);
-  drawStates();
-  let con1 = new Connection(state1, state2, "Name", "5", "1");
-  con1.draw();
-  */
+  let conn1 = new Connection(state1, state2, "Name", "5", "1");
+  myConnections.push(conn1);
+  drawStatesWithConnections();
 };
 
 class State {
@@ -304,20 +314,32 @@ class Connection {
     let toY = this.toState.y;
     let gap = 32;
 
-    let headLen = 10; // length of head in pixels
+    let headLen = 12;
     let dx = toX - fromX;
     let dy = toY - fromY;
     let angle = Math.atan2(dy, dx);
+
+    fromX = fromX + gap * Math.cos(angle);
+    toX = toX - gap * Math.cos(angle);
+    fromY = fromY + gap * Math.sin(angle);
+    toY = toY - gap * Math.sin(angle);
+
     context.moveTo(fromX, fromY);
     context.lineTo(toX, toY);
+
+    toX = toX - 0.25 * Math.cos(angle);
+    toY = toY - 0.25 * Math.sin(angle);
+
+    context.moveTo(toX, toY);
+
     context.lineTo(
-      toX - headLen * Math.cos(angle - Math.PI / 6),
-      toY - headLen * Math.sin(angle - Math.PI / 6)
+      toX - headLen * Math.cos(angle - Math.PI / 5),
+      toY - headLen * Math.sin(angle - Math.PI / 5)
     );
     context.moveTo(toX, toY);
     context.lineTo(
-      toX - headLen * Math.cos(angle + Math.PI / 6),
-      toY - headLen * Math.sin(angle + Math.PI / 6)
+      toX - headLen * Math.cos(angle + Math.PI / 5),
+      toY - headLen * Math.sin(angle + Math.PI / 5)
     );
 
     context.strokeStyle = "#000";
