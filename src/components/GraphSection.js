@@ -11,6 +11,10 @@ function GraphSection() {
     currentTool.classList.remove("bg-accent");
     currentTool.classList.add("bg-primary");
     tool = title;
+    if (addConnPhase === 2) {
+      addConnPhase = 1;
+      tempStateForConn.fillColor = "#74343f";
+    }
   }
 
   return (
@@ -62,13 +66,16 @@ function GraphSection() {
       <div className="bg-secondary rounded-full h-8 flex justify-center items-center bg-opacity-50 mt-2 text-whitish font-medium">
         Add states or connections
       </div>
-      <div className="h-[35rem] mt-2" id="canvasContainer">
+      <div className="h-[35rem] mt-2 relative" id="canvasContainer">
         <canvas
           className="bg-primary rounded-lg border border-accent"
           id="canvas"
           width="100%"
           height="100%"
         ></canvas>
+        <div className="absolute left-1/2 top-1/2  bg-secondary w-64 h-52 border-black border-4 rounded-xl hidden" style={{transform:"translate(-50%, -50%)"}}>
+
+        </div>
       </div>
     </div>
   );
@@ -83,9 +90,12 @@ let offsetY;
 let myStates = [];
 let myConnections = [];
 let clickedStateIndex = null;
+let clickedConnIndex = null;
 let isDragging = false;
 let startX;
 let startY;
+let addConnPhase = 1;
+let tempStateForConn;
 
 function getOffset() {
   let canvasOffsets = canvas.getBoundingClientRect();
@@ -95,12 +105,13 @@ function getOffset() {
 
 function drawStatesWithConnections() {
   context.clearRect(0, 0, canvas.width, canvas.height);
-  myStates.forEach((state) => {
-    state.draw();
-  });
 
   myConnections.forEach((connection) => {
     connection.draw();
+  });
+
+  myStates.forEach((state) => {
+    state.draw();
   });
 }
 
@@ -108,18 +119,69 @@ function distanceMouseToState(x, y, state) {
   return Math.sqrt(Math.pow(x - state.x, 2) + Math.pow(y - state.y, 2));
 }
 
-/*function distanceStateToState(fromState, toState) {
-  return Math.sqrt(
-    Math.pow(fromState.x - toState.x, 2) + Math.pow(fromState.y - toState.y, 2)
-  );
-}*/
-
 function mouseInState(x, y, state) {
   let distance = distanceMouseToState(x, y, state);
   if (distance <= state.r + state.lineWidth) {
     return true;
   } else {
     return false;
+  }
+}
+
+function checkStateClick() {
+  let minDistance;
+  if (myStates.length > 0) {
+    minDistance = distanceMouseToState(startX, startY, myStates[0]);
+  }
+  for (let i = 0; i < myStates.length; i++) {
+    if (mouseInState(startX, startY, myStates[i])) {
+      let currentDistance = distanceMouseToState(startX, startY, myStates[i]);
+      if (currentDistance <= minDistance) {
+        clickedStateIndex = i;
+        minDistance = currentDistance;
+        isDragging = true;
+      }
+    }
+  }
+
+  if (myStates.length > 1 && isDragging) {
+    swapStates();
+  }
+}
+
+function mouseInConn(x, y, conn) {
+  let fromX = conn.fromState.x;
+  let toX = conn.toState.x;
+  let fromY = conn.fromState.y;
+  let toY = conn.toState.y;
+
+  // Check if the mouse coordinates are within the bounding box of the connection
+  if (
+    x >= Math.min(fromX, toX) &&
+    x <= Math.max(fromX, toX) &&
+    y >= Math.min(fromY, toY) &&
+    y <= Math.max(fromY, toY)
+  ) {
+    // Calculate the distance from the mouse to the line formed by the connection
+    let distance =
+      Math.abs((toX - fromX) * (fromY - y) - (fromX - x) * (toY - fromY)) /
+      Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
+
+    // You can adjust this threshold value based on your needs
+    let threshold = 5;
+
+    // If the distance is within the threshold, the mouse is considered to be in the connection
+    return distance < threshold;
+  }
+
+  return false;
+}
+
+function checkConnClick() {
+  for (let i = 0; i < myConnections.length; i++) {
+    if (mouseInConn(startX, startY, myConnections[i])) {
+      clickedConnIndex = i;
+    }
   }
 }
 
@@ -134,47 +196,73 @@ function mouseDown(event) {
     startY = parseInt(event.touches[0].clientY - offsetY);
   }
 
+  checkStateClick();
+  checkConnClick();
+
+  let index = myStates.length - 1;
+
   if (tool === "add") {
-    let stateText = window.prompt("State Name:");
-    myStates.push(new State(startX, startY, stateText));
-    drawStatesWithConnections();
-  } else {
-    let minDistance;
-    if (myStates.length > 0) {
-      minDistance = distanceMouseToState(startX, startY, myStates[0]);
-    }
-    for (let i = 0; i < myStates.length; i++) {
-      if (mouseInState(startX, startY, myStates[i])) {
-        let currentDistance = distanceMouseToState(startX, startY, myStates[i]);
-        if (currentDistance <= minDistance) {
-          clickedStateIndex = i;
-          minDistance = currentDistance;
-          isDragging = true;
-        }
+    if (clickedStateIndex != null) {
+      if (addConnPhase === 1) {
+        tempStateForConn = myStates[index];
+        tempStateForConn.fillColor = "#b51b34";
+        addConnPhase = 2;
+      } else {
+        addConnPhase = 1;
+        myStates[index].fillColor = "#b51b34";
+        myStates[index].draw();
+        let connText = window.prompt(
+          `A connection will be made from ${tempStateForConn.text} to ${myStates[index].text}\nConnection Name:`
+        );
+        let connReward = window.prompt("Reward:");
+        tempStateForConn.fillColor = "#74343f";
+        myStates[index].fillColor = "#74343f";
+        myConnections.push(
+          new Connection(
+            tempStateForConn,
+            myStates[index],
+            connText,
+            connReward,
+            1
+          )
+        );
+      }
+    } else {
+      if (addConnPhase === 2) {
+        addConnPhase = 1;
+        tempStateForConn.fillColor = "#74343f";
+      } else {
+        let stateText = window.prompt("State Name:");
+        myStates.push(new State(startX, startY, stateText));
       }
     }
-
-    if (myStates.length > 1 && isDragging) {
-      swapStates();
-    }
-
-    if (tool === "sub" && clickedStateIndex != null) {
-      let index = myStates.length - 1;
+  } else if (tool === "sub") {
+    if (clickedStateIndex != null) {
       let confirm = window.prompt(
         `Are you sure you want to delete state ${myStates[index].text}? (y/n)`
       );
       if (typeof confirm === "string" && confirm.toLowerCase() === "y") {
-        for(let i = 0; i < myConnections.length; i++) {
-          if(myConnections[i].fromState === myStates[index] || myConnections[i].toState === myStates[index]) {
+        for (let i = 0; i < myConnections.length; i++) {
+          if (
+            myConnections[i].fromState === myStates[index] ||
+            myConnections[i].toState === myStates[index]
+          ) {
             myConnections.splice(i, 1);
           }
         }
         myStates.splice(index, 1);
       }
+    } else if (clickedConnIndex != null) {
+      let confirm = window.prompt(
+        `Are you sure you want to delete Connection ${myConnections[clickedConnIndex].text}? (y/n)`
+      );
+      if (typeof confirm === "string" && confirm.toLowerCase() === "y") {
+        myConnections.splice(clickedConnIndex, 1);
+      }
     }
-
-    drawStatesWithConnections();
   }
+
+  drawStatesWithConnections();
 }
 
 function swapStates() {
@@ -188,6 +276,7 @@ function mouseUpOut(event) {
     isDragging = false;
     clickedStateIndex = null;
   }
+  clickedConnIndex = null;
 }
 
 function mouseMove(event) {
@@ -256,7 +345,7 @@ window.onload = () => {
   let state2 = new State(300, 200, "B");
   myStates.push(state1);
   myStates.push(state2);
-  let conn1 = new Connection(state1, state2, "Name", "5", "1");
+  let conn1 = new Connection(state1, state2, "Test Conn", "5", "1");
   myConnections.push(conn1);
   drawStatesWithConnections();
 };
@@ -297,10 +386,10 @@ class State {
 }
 
 class Connection {
-  constructor(fromState, toState, name, reward, prob) {
+  constructor(fromState, toState, text, reward, prob) {
     this.fromState = fromState;
     this.toState = toState;
-    this.name = name;
+    this.text = text;
     this.reward = reward;
     this.prob = prob;
   }
@@ -341,6 +430,41 @@ class Connection {
       toX - headLen * Math.cos(angle + Math.PI / 5),
       toY - headLen * Math.sin(angle + Math.PI / 5)
     );
+
+    let middleX = (fromX + toX) / 2;
+    let middleY = (fromY + toY) / 2;
+
+    if (toX < fromX) {
+      angle += Math.PI;
+    }
+
+    context.save();
+    context.translate(middleX, middleY);
+    context.rotate(angle);
+    context.translate(0, -10);
+
+    context.font = "1rem Poppins";
+    context.fillStyle = "#000";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(this.text, 0, 0);
+
+    context.restore();
+
+    context.save();
+    context.translate(toX, toY);
+    context.rotate(angle);
+
+    if (toX < fromX) {
+      context.translate(5, -15);
+    } else {
+      context.translate(-5, -15);
+    }
+
+    context.fillStyle = "#74343f";
+    context.fillText("+" + this.reward, 0, 0);
+
+    context.restore();
 
     context.strokeStyle = "#000";
     context.stroke();
