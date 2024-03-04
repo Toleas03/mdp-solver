@@ -2,18 +2,21 @@ import React from "react";
 import Tool from "./Tool";
 
 function GraphSection() {
+
   function changeTool(event) {
-    const { title } = event.target;
-    const prevTool = document.getElementById(tool);
-    const currentTool = document.getElementById(title);
-    prevTool.classList.remove("bg-primary");
-    prevTool.classList.add("bg-accent");
-    currentTool.classList.remove("bg-accent");
-    currentTool.classList.add("bg-primary");
-    tool = title;
-    if (addConnPhase === 2) {
-      addConnPhase = 1;
-      tempStateForConn.fillColor = "#74343f";
+    if (!popup) {
+      const { title } = event.target;
+      const prevTool = document.getElementById(tool);
+      const currentTool = document.getElementById(title);
+      prevTool.classList.remove("bg-primary");
+      prevTool.classList.add("bg-accent");
+      currentTool.classList.remove("bg-accent");
+      currentTool.classList.add("bg-primary");
+      tool = title;
+      if (addConnPhase === 2) {
+        addConnPhase = 1;
+        tempStateForConn.fillColor = "#74343f";
+      }
     }
   }
 
@@ -73,9 +76,25 @@ function GraphSection() {
           width="100%"
           height="100%"
         ></canvas>
-        <div className="absolute left-1/2 top-1/2  bg-secondary w-64 h-52 border-black border-4 rounded-xl hidden" style={{transform:"translate(-50%, -50%)"}}>
-
-        </div>
+        <form
+          className="hidden flex flex-col justify-center items-center gap-5 absolute left-1/2 top-1/2  bg-secondary w-64 h-52 border-black border-4 rounded-xl"
+          style={{ transform: "translate(-50%, -50%)" }}
+          id="popup"
+        >
+          <label className="text-lg">State Name:</label>
+          <input
+            className="bg-accent text-center rounded-full h-7 focus:outline-none focus:border-2 focus:border-black"
+            type="text"
+            id="stateName"
+          />
+          <button
+            className="bg-whitish rounded-full px-6 py-1 hover:bg-black hover:text-whitish transition"
+            type="submit"
+            onClick={submitStateName}
+          >
+            Confirm
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -96,6 +115,18 @@ let startX;
 let startY;
 let addConnPhase = 1;
 let tempStateForConn;
+let popup = false;
+
+function submitStateName(event) {
+  event.preventDefault();
+  let popupDiv = document.getElementById("popup");
+  let stateTextInput = document.getElementById("stateName");
+  let stateText = stateTextInput.value;
+  popup = false;
+  popupDiv.classList.add("hidden");
+  myStates.push(new State(startX, startY, stateText));
+  drawStatesWithConnections();
+}
 
 function getOffset() {
   let canvasOffsets = canvas.getBoundingClientRect();
@@ -188,81 +219,86 @@ function checkConnClick() {
 function mouseDown(event) {
   event.preventDefault();
 
-  if (event.type === "mousedown") {
-    startX = parseInt(event.clientX - offsetX);
-    startY = parseInt(event.clientY - offsetY);
-  } else {
-    startX = parseInt(event.touches[0].clientX - offsetX);
-    startY = parseInt(event.touches[0].clientY - offsetY);
-  }
-
-  checkStateClick();
-  checkConnClick();
-
-  let index = myStates.length - 1;
-
-  if (tool === "add") {
-    if (clickedStateIndex != null) {
-      if (addConnPhase === 1) {
-        tempStateForConn = myStates[index];
-        tempStateForConn.fillColor = "#b51b34";
-        addConnPhase = 2;
-      } else {
-        addConnPhase = 1;
-        myStates[index].fillColor = "#b51b34";
-        myStates[index].draw();
-        let connText = window.prompt(
-          `A connection will be made from ${tempStateForConn.text} to ${myStates[index].text}\nConnection Name:`
-        );
-        let connReward = window.prompt("Reward:");
-        tempStateForConn.fillColor = "#74343f";
-        myStates[index].fillColor = "#74343f";
-        myConnections.push(
-          new Connection(
-            tempStateForConn,
-            myStates[index],
-            connText,
-            connReward,
-            1
-          )
-        );
-      }
+  if (!popup) {
+    if (event.type === "mousedown") {
+      startX = parseInt(event.clientX - offsetX);
+      startY = parseInt(event.clientY - offsetY);
     } else {
-      if (addConnPhase === 2) {
-        addConnPhase = 1;
-        tempStateForConn.fillColor = "#74343f";
-      } else {
-        let stateText = window.prompt("State Name:");
-        myStates.push(new State(startX, startY, stateText));
-      }
+      startX = parseInt(event.touches[0].clientX - offsetX);
+      startY = parseInt(event.touches[0].clientY - offsetY);
     }
-  } else if (tool === "sub") {
-    if (clickedStateIndex != null) {
-      let confirm = window.prompt(
-        `Are you sure you want to delete state ${myStates[index].text}? (y/n)`
-      );
-      if (typeof confirm === "string" && confirm.toLowerCase() === "y") {
-        for (let i = 0; i < myConnections.length; i++) {
-          if (
-            myConnections[i].fromState === myStates[index] ||
-            myConnections[i].toState === myStates[index]
-          ) {
-            myConnections.splice(i, 1);
-          }
-        }
-        myStates.splice(index, 1);
-      }
-    } else if (clickedConnIndex != null) {
-      let confirm = window.prompt(
-        `Are you sure you want to delete Connection ${myConnections[clickedConnIndex].text}? (y/n)`
-      );
-      if (typeof confirm === "string" && confirm.toLowerCase() === "y") {
-        myConnections.splice(clickedConnIndex, 1);
-      }
-    }
-  }
 
-  drawStatesWithConnections();
+    checkStateClick();
+    checkConnClick();
+
+    let index = myStates.length - 1;
+
+    if (tool === "add") {
+      if (clickedStateIndex != null) {
+        if (addConnPhase === 1) {
+          tempStateForConn = myStates[index];
+          tempStateForConn.fillColor = "#b51b34";
+          addConnPhase = 2;
+        } else {
+          addConnPhase = 1;
+          myStates[index].fillColor = "#b51b34";
+          myStates[index].draw();
+          let connText = window.prompt(
+            `A connection will be made from ${tempStateForConn.text} to ${myStates[index].text}\nConnection Name:`
+          );
+          let connReward = window.prompt("Reward:");
+          tempStateForConn.fillColor = "#74343f";
+          myStates[index].fillColor = "#74343f";
+          myConnections.push(
+            new Connection(
+              tempStateForConn,
+              myStates[index],
+              connText,
+              connReward,
+              1
+            )
+          );
+        }
+      } else {
+        if (addConnPhase === 2) {
+          addConnPhase = 1;
+          tempStateForConn.fillColor = "#74343f";
+        } else {
+          let stateTextInput = document.getElementById("stateName");
+          stateTextInput.value = "A";
+          let popupDiv = document.getElementById("popup");
+          popup = true;
+          popupDiv.classList.remove("hidden");
+        }
+      }
+    } else if (tool === "sub") {
+      if (clickedStateIndex != null) {
+        let confirm = window.prompt(
+          `Are you sure you want to delete state ${myStates[index].text}? (y/n)`
+        );
+        if (typeof confirm === "string" && confirm.toLowerCase() === "y") {
+          for (let i = 0; i < myConnections.length; i++) {
+            if (
+              myConnections[i].fromState === myStates[index] ||
+              myConnections[i].toState === myStates[index]
+            ) {
+              myConnections.splice(i, 1);
+            }
+          }
+          myStates.splice(index, 1);
+        }
+      } else if (clickedConnIndex != null) {
+        let confirm = window.prompt(
+          `Are you sure you want to delete Connection ${myConnections[clickedConnIndex].text}? (y/n)`
+        );
+        if (typeof confirm === "string" && confirm.toLowerCase() === "y") {
+          myConnections.splice(clickedConnIndex, 1);
+        }
+      }
+    }
+
+    drawStatesWithConnections();
+  }
 }
 
 function swapStates() {
@@ -341,13 +377,13 @@ window.onload = () => {
   canvas.ontouchcancel = mouseUpOut;
   canvas.ontouchmove = mouseMove;
 
-  let state1 = new State(100, 100, "A");
+  /*let state1 = new State(100, 100, "A");
   let state2 = new State(300, 200, "B");
   myStates.push(state1);
   myStates.push(state2);
   let conn1 = new Connection(state1, state2, "Test Conn", "5", "1");
   myConnections.push(conn1);
-  drawStatesWithConnections();
+  drawStatesWithConnections();*/
 };
 
 class State {

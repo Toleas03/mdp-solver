@@ -12,6 +12,7 @@ function Variable(props) {
         name={props.name.toLowerCase()}
         id={props.name.toLowerCase()}
         value={props.value}
+        onChange={props.onChange}
       ></input>
     </>
   );
